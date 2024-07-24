@@ -85,59 +85,59 @@ matMult:
         # for(int i = 0; i < num_rows_a; i++)
         # ecx will be i
         movl $0, %ecx # i = 0
+
         first_for_start:
+            movl %ecx, i(%ebp)
             # i < num_rows_a
             #neg: i - num_rows_a >= 0
             cmpl num_rows_a(%ebp), %ecx
             jge first_for_end
             # result[i] = (int *) malloc(num_cols_b * sizeof(int));
-            movl %ecx, i(%ebp)
             movl num_cols_b(%ebp), %eax # eax = num_cols_b
             shll $2, %eax # eax = num_cols_b * sizeof(int)
             push %eax # push eax to stack
             call malloc
             addl $1 * ws, %esp # pop eax from stack to malloc
             movl C(%ebp), %edx # edx = C
+            movl i(%ebp), %ecx
             movl %eax, (%edx, %ecx, 4) # result[i] = malloc(num_cols_b * sizeof(int))
 
             incl %ecx # i++
             jmp first_for_start
         first_for_end:
 
+        movl $0, %ecx # i = 0
         second_for_start:
             # for(int i = 0; i < num_rows_a; i++){
-
-            movl $0, %ecx # i = 0
             cmpl num_rows_a(%ebp), %ecx # i < num_rows_a
             jge second_for_end
+
+            movl $0, %edx # j = 0
             inner_for_start:
                 # for(int j = 0; j < num_cols_b; j++){
-                movl $0, %edx # j = 0
                 cmpl num_cols_b(%ebp), %edx # j < num_cols_b
                 jge inner_for_end
                 # result[i][j] = 0;
                 movl C(%ebp), %ebx
-                movl %ecx, %esi 
-                movl (%ebx, %esi, 4), %ebx # ebx = result[i]
+                movl (%ebx, %ecx, 4), %ebx # ebx = result[i]
                 movl $0, (%ebx, %edx, 4) # result[i][j] = 0
+
+                movl $0, %edi # k = 0
                 multi_for_start:
                     # for(int k = 0; k < num_cols_a; k++){
-                    movl $0, %edi # k = 0
                     cmpl num_cols_a(%ebp), %edi # k < num_cols_a
                     jge multi_for_end
                     # result[i][j] += a[i][k] * b[k][j];
                     movl a(%ebp), %eax # eax = a
                     movl (%eax, %ecx, 4), %eax # eax = a[i]
                     movl (%eax, %edi, 4), %eax # eax = a[i][k]
-                    movl b(%ebp), %edx # edx = b
-                    movl (%edx, %edi, 4), %edx # edx = b[k]
-                    movl (%edx, %edx, 4), %edx # edx = b[k][j]
-                    imull %edx, %eax # eax = a[i][k] * b[k][j]
-                    movl C(%ebp), %ebx # ebx = C
-                    movl %ecx, %esi # save i in esi
-                    movl (%ebx, %esi, 4), %ebx # ebx = result[i]
-                    movl (%ebx, %edx, 4), %ebx # ebx = result[i][j]
-                    addl %eax, %ebx # result[i][j] += a[i][k] * b[k][j]
+                    movl b(%ebp), %esi # edx = b
+                    movl (%esi, %edi, 4), %esi # edx = b[k]
+                    imull (%esi, %edx, 4), %eax # eax = a[i][k] * b[k][j]
+
+                    movl C(%ebp), %ebx
+                    movl (%ebx, %ecx, 4), %ebx # ebx = result[i]
+                    addl %eax, (%ebx, %edx, 4)
                     incl %edi # k++
                     jmp multi_for_start
                 multi_for_end:
@@ -160,7 +160,3 @@ matMult:
     pop %ebp #restore old ebp
     ret
     epilogue_end:
-
-    done:
-        nop
-        
